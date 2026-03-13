@@ -153,6 +153,88 @@ impl ToScad for Cube {
 }
 
 #[derive(Debug)]
+enum Radius {
+    Split { top: ScadValue, bottom: ScadValue },
+    Combined(ScadValue),
+}
+
+#[derive(Debug)]
+pub struct Cylinder {
+    radius: Radius,
+    height: ScadValue,
+    center: bool,
+}
+
+impl_shape_3d!(Cylinder);
+
+impl Cylinder {
+    pub fn with_radius(radius: impl Into<ScadValue>, height: impl Into<ScadValue>) -> Self {
+        Self {
+            radius: Radius::Combined(radius.into()),
+            height: height.into(),
+            center: false,
+        }
+    }
+
+    pub fn with_diameter(diameter: impl Into<ScadValue>, height: impl Into<ScadValue>) -> Self {
+        Self::with_radius(diameter.into() / 2., height)
+    }
+
+    pub fn with_radii(
+        top_r: impl Into<ScadValue>,
+        bottom_r: impl Into<ScadValue>,
+        height: impl Into<ScadValue>,
+    ) -> Self {
+        Self {
+            radius: Radius::Split {
+                top: top_r.into(),
+                bottom: bottom_r.into(),
+            },
+            height: height.into(),
+            center: false,
+        }
+    }
+
+    pub fn with_diameters(
+        top_d: impl Into<ScadValue>,
+        bottom_d: impl Into<ScadValue>,
+        height: impl Into<ScadValue>,
+    ) -> Self {
+        Self::with_radii(top_d.into() / 2., bottom_d.into() / 2., height)
+    }
+
+    pub fn center(self) -> Self {
+        Self {
+            center: true,
+            ..self
+        }
+    }
+}
+
+impl ToScad for Cylinder {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        write!(writer, "cylinder(h = ")?;
+        self.height.to_scad(writer)?;
+        match &self.radius {
+            Radius::Split { top, bottom } => {
+                write!(writer, ", r1 = ")?;
+                bottom.to_scad(writer)?;
+                write!(writer, ", r2 = ")?;
+                top.to_scad(writer)?;
+            }
+            Radius::Combined(scad_value) => {
+                write!(writer, ", r = ")?;
+                scad_value.to_scad(writer)?;
+            }
+        }
+        if self.center {
+            write!(writer, ", center = true")?;
+        }
+        write!(writer, ");")
+    }
+}
+
+#[derive(Debug)]
 pub struct Sphere {
     radius: ScadValue,
 }

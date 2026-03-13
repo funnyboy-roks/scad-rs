@@ -6,7 +6,6 @@ use std::{
     io::{self, BufWriter},
 };
 
-use bauer::Builder;
 use scad::{
     Scad, ToScad,
     boolean::DynUnion2d,
