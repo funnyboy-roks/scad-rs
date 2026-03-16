@@ -1,11 +1,12 @@
 use std::{
     borrow::Cow,
     io::{self, Write},
+    ops::{AddAssign, BitAndAssign, SubAssign},
 };
 
 use crate::{
     ToScad,
-    boolean::{Difference, Intersection, Union},
+    boolean::{Difference, DynDifference, DynIntersection, DynUnion, Intersection, Union},
     math::{ScadValue, Vector3},
     shape2d::Shape2d,
     transform::{Rotated, Scaled, Translated},
@@ -181,8 +182,8 @@ impl Cylinder {
     }
 
     pub fn with_radii(
-        top_r: impl Into<ScadValue>,
         bottom_r: impl Into<ScadValue>,
+        top_r: impl Into<ScadValue>,
         height: impl Into<ScadValue>,
     ) -> Self {
         Self {
@@ -196,11 +197,11 @@ impl Cylinder {
     }
 
     pub fn with_diameters(
-        top_d: impl Into<ScadValue>,
         bottom_d: impl Into<ScadValue>,
+        top_d: impl Into<ScadValue>,
         height: impl Into<ScadValue>,
     ) -> Self {
-        Self::with_radii(top_d.into() / 2., bottom_d.into() / 2., height)
+        Self::with_radii(bottom_d.into() / 2., top_d.into() / 2., height)
     }
 
     pub fn center(self) -> Self {
@@ -356,5 +357,108 @@ impl ToScad for Hull {
             x.to_scad(writer)?;
         }
         write!(writer, "}}")
+    }
+}
+
+impl<A> FromIterator<A> for Hull
+where
+    A: Shape3d + 'static,
+{
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
+        let iter = iter.into_iter();
+
+        let mut this = match iter.size_hint() {
+            (_, Some(h)) => Self::with_capacity(h),
+            (l, None) => Self::with_capacity(l),
+        };
+
+        for x in iter {
+            this.add(x)
+        }
+
+        this
+    }
+}
+
+/// 3d shape for accumulating boolean operations
+///
+/// ```rust
+/// # use scad::{shape3d::{Cube, Sphere, DynShape3d}, ToScad};
+/// let mut shape = DynShape3d::new();
+///
+/// shape += Cube::with_size([10, 10, 10]);
+/// shape -= Sphere::with_radius(8);
+/// shape &= Cube::with_size([12, 5, 12]);
+/// # shape.to_scad(&mut std::io::empty()).unwrap();
+/// ```
+#[derive(Default)]
+pub struct DynShape3d {
+    inner: Option<Box<dyn ToScad>>,
+}
+impl_shape_3d!(DynShape3d);
+
+impl ToScad for DynShape3d {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        match &self.inner {
+            Some(inner) => inner.to_scad(writer),
+            None => panic!("to_scad called on empty DynShape3d"),
+        }
+    }
+}
+
+impl DynShape3d {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<T> AddAssign<T> for DynShape3d
+where
+    T: Shape3d + 'static,
+{
+    fn add_assign(&mut self, rhs: T) {
+        self.inner = match self.inner.take() {
+            None => Some(Box::new(rhs)),
+            Some(inner) => {
+                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
+                // using these methods
+                let new = unsafe { DynUnion::pair_raw(inner, Box::new(rhs)) };
+                Some(Box::new(new))
+            }
+        }
+    }
+}
+
+impl<T> SubAssign<T> for DynShape3d
+where
+    T: Shape3d + 'static,
+{
+    fn sub_assign(&mut self, rhs: T) {
+        self.inner = match self.inner.take() {
+            None => None,
+            Some(inner) => {
+                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
+                // using these methods
+                let new = unsafe { DynDifference::pair_raw(inner, Box::new(rhs)) };
+                Some(Box::new(new))
+            }
+        }
+    }
+}
+
+impl<T> BitAndAssign<T> for DynShape3d
+where
+    T: Shape3d + 'static,
+{
+    fn bitand_assign(&mut self, rhs: T) {
+        self.inner = match self.inner.take() {
+            None => None,
+            Some(inner) => {
+                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
+                // using these methods
+                let new = unsafe { DynIntersection::pair_raw(inner, Box::new(rhs)) };
+                Some(Box::new(new))
+            }
+        }
     }
 }

@@ -1,7 +1,6 @@
 #![allow(clippy::manual_is_multiple_of)]
 
 use std::{
-    array,
     fs::File,
     io::{self, BufWriter},
 };
@@ -35,27 +34,27 @@ impl_shape_3d!(RoundedCube);
 // losely based on https://openhome.cc/eGossip/OpenSCAD/lib3x-rounded_cube.html
 impl ToScad for RoundedCube {
     fn to_scad(&self, writer: &mut dyn io::Write) -> io::Result<()> {
-        let edge_len = self.size.clone() - Vector3::from(2.) * self.corner_r;
-        let corners = array::from_fn::<_, 8, _>(|i| {
-            let pair = [0., 1.];
-            let x = pair[i & 1];
-            let y = pair[(i & 2) >> 1];
-            let z = pair[(i & 4) >> 2];
-            (
-                edge_len.x.clone() * x,
-                edge_len.y.clone() * y,
-                edge_len.z.clone() * z,
-            )
-        });
+        // hull of spheres at corners of the cube (inset by radius)
 
-        let mut h = Hull::with_capacity(corners.len());
-        for c in corners {
-            h.add(
+        let edge_len = self.size.clone() - Vector3::from(2.) * self.corner_r;
+
+        let h = (0..8)
+            .map(|i| {
+                let x = (i & 1) as f64;
+                let y = ((i & 2) >> 1) as f64;
+                let z = ((i & 4) >> 2) as f64;
+                let offset = (
+                    edge_len.x.clone() * x,
+                    edge_len.y.clone() * y,
+                    edge_len.z.clone() * z,
+                );
+
                 Sphere::with_radius(self.corner_r)
-                    .translate(c)
-                    .translate(self.corner_r),
-            );
-        }
+                    .translate(offset)
+                    .translate(self.corner_r)
+            })
+            .collect::<Hull>();
+
         h.to_scad(writer)
     }
 }

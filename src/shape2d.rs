@@ -120,6 +120,33 @@ impl<'a> ToScad for RawShape2d<'a> {
     }
 }
 
+pub struct Circle {
+    radius: ScadValue,
+}
+impl_shape_2d!(Circle);
+
+impl Circle {
+    pub fn with_radius(radius: impl Into<ScadValue>) -> Self {
+        Self {
+            radius: radius.into(),
+        }
+    }
+
+    pub fn with_diameter(diameter: impl Into<ScadValue>) -> Self {
+        Self {
+            radius: diameter.into() / 2.,
+        }
+    }
+}
+
+impl ToScad for Circle {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        write!(writer, "circle(r = ")?;
+        self.radius.to_scad(writer)?;
+        write!(writer, ");")
+    }
+}
+
 #[derive(Debug, Default)]
 pub enum TextDirection {
     #[default]
