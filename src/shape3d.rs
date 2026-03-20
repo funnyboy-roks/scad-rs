@@ -8,11 +8,28 @@ use crate::{
     ToScad,
     boolean::{Difference, DynDifference, DynIntersection, DynUnion, Intersection, Union},
     math::{ScadValue, Vector3},
+    modifiers::{Disabled3d, Highlight3d, ShowOnly3d, Transparent3d},
     shape2d::Shape2d,
     transform::{Rotated, Scaled, Translated},
 };
 
 pub trait Shape3d: ToScad + Sized {
+    fn disable(self) -> Disabled3d<Self> {
+        Disabled3d::new(self)
+    }
+
+    fn show_only(self) -> ShowOnly3d<Self> {
+        ShowOnly3d::new(self)
+    }
+
+    fn highlight(self) -> Highlight3d<Self> {
+        Highlight3d::new(self)
+    }
+
+    fn transparent(self) -> Transparent3d<Self> {
+        Transparent3d::new(self)
+    }
+
     fn translate(self, translation: impl Into<Vector3>) -> Translated<Self> {
         Translated::new(self, translation.into())
     }

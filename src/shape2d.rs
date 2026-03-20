@@ -9,11 +9,28 @@ use crate::{
     ToScad,
     boolean::{Difference2d, Intersection2d, Union2d},
     math::{ScadValue, Vector2},
+    modifiers::{Disabled2d, Highlight2d, ShowOnly2d, Transparent2d},
     shape3d::LinearExtrude,
     transform::{Rotated2d, Scaled, Translated2d},
 };
 
 pub trait Shape2d: ToScad + Sized {
+    fn disable(self) -> Disabled2d<Self> {
+        Disabled2d::new(self)
+    }
+
+    fn show_only(self) -> ShowOnly2d<Self> {
+        ShowOnly2d::new(self)
+    }
+
+    fn highlight(self) -> Highlight2d<Self> {
+        Highlight2d::new(self)
+    }
+
+    fn transparent(self) -> Transparent2d<Self> {
+        Transparent2d::new(self)
+    }
+
     fn translate(self, translation: impl Into<Vector2>) -> Translated2d<Self> {
         Translated2d::new(self, translation.into())
     }

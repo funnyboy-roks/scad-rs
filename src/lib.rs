@@ -5,6 +5,7 @@ use std::{
 
 pub mod boolean;
 pub mod math;
+pub mod modifiers;
 pub mod shape2d;
 pub mod shape3d;
 pub mod transform;
