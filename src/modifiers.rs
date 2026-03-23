@@ -1,4 +1,4 @@
-use crate::{ToScad, impl_shape_2d, impl_shape_3d, shape2d::Shape2d, shape3d::Shape3d};
+use crate::{ToScad, impl_shape_2d, impl_shape_3d, shape3d::Shape3d};
 
 macro_rules! impl_modifier {
     ($name2d: ident, $name3d: ident, $symbol: literal) => {

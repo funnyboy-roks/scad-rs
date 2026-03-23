@@ -109,8 +109,8 @@ macro_rules! impl_shape_2d {
             $(where $($gen: $crate::shape2d::Shape2d),*)? {}
     };
     ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
-        impl_shape_2d!(($struct)$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
-        impl_shape_2d!((&$struct)$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
+        impl_shape_2d!(($struct)$(<$($lt,)*$($gen: $trait),*>)?);
+        impl_shape_2d!((&$struct)$(<$($lt,)*$($gen: $trait),*>)?);
     };
     ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident),*>)?) => {
         impl_shape_2d!($struct$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);

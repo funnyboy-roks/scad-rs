@@ -112,7 +112,6 @@ fn main() -> io::Result<()> {
         .number_of_segments(100)
         .objects(Box::new(base + text))
         .build()
-        .unwrap()
         .to_scad(&mut out)?;
 
     Ok(())
