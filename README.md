@@ -18,7 +18,7 @@ let obj = Cube::with_size((5, 5, 2.5)) + Sphere::with_radius(0.5).translate((0, 
 let scad = Scad::builder()
     .number_of_segments(100)
     .objects(Box::new(obj))
-    .build()?
+    .build()
     .to_scad(&mut file);
 ```
 
