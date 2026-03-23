@@ -60,11 +60,11 @@ pub trait Shape2d: ToScad + Sized {
     }
 }
 
-/// Implement [`Shape3d`] and some binary operations on a struct
+/// Implement [`Shape2d`] and some binary operations on a struct
 #[macro_export]
 macro_rules! impl_shape_2d {
-    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident),*>)?) => {
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Sub<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+    (($($struct: tt)+)$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Sub<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $crate::shape2d::Shape2d),*)?
         {
             type Output = $crate::boolean::Difference2d<Self, Rhs>;
@@ -74,7 +74,7 @@ macro_rules! impl_shape_2d {
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Add<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Add<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $crate::shape2d::Shape2d),*)?
         {
             type Output = $crate::boolean::Union2d<Self, Rhs>;
@@ -84,7 +84,7 @@ macro_rules! impl_shape_2d {
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitOr<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitOr<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $crate::shape2d::Shape2d),*)?
         {
             type Output = $crate::boolean::Union2d<Self, Rhs>;
@@ -94,7 +94,7 @@ macro_rules! impl_shape_2d {
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitAnd<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitAnd<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $crate::shape2d::Shape2d),*)?
         {
             type Output = $crate::boolean::Intersection2d<Self, Rhs>;
@@ -105,8 +105,15 @@ macro_rules! impl_shape_2d {
         }
 
 
-        impl<$($($lt,)* $($gen,)*)?> $crate::shape2d::Shape2d for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)?> $crate::shape2d::Shape2d for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $crate::shape2d::Shape2d),*)? {}
+    };
+    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
+        impl_shape_2d!(($struct)$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
+        impl_shape_2d!((&$struct)$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
+    };
+    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident),*>)?) => {
+        impl_shape_2d!($struct$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
     };
 }
 

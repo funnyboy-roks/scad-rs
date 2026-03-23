@@ -88,7 +88,7 @@ impl ToScad for Vector3 {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Vector2 {
     pub x: ScadValue,
     pub y: ScadValue,

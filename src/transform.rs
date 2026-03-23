@@ -6,7 +6,7 @@ use crate::{
     shape3d::Shape3d,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Scaled<T> {
     inner: T,
     scale: f64,
@@ -29,7 +29,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Translated<T> {
     inner: T,
     translation: Vector3,
@@ -54,7 +54,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Rotated<T> {
     inner: T,
     rotation: Vector3,
@@ -79,7 +79,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Translated2d<T> {
     inner: T,
     translation: Vector2,
@@ -104,7 +104,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Rotated2d<T> {
     inner: T,
     rotation: ScadValue,

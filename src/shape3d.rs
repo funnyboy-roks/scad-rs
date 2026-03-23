@@ -4,6 +4,8 @@ use std::{
     ops::{AddAssign, BitAndAssign, SubAssign},
 };
 
+use bauer::Builder;
+
 use crate::{
     ToScad,
     boolean::{Difference, DynDifference, DynIntersection, DynUnion, Intersection, Union},
@@ -58,8 +60,8 @@ pub trait Shape3d: ToScad + Sized {
 /// Implement [`Shape3d`] and some binary operations on a struct
 #[macro_export]
 macro_rules! impl_shape_3d {
-    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::Sub<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+    (($($struct: tt)+)$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::Sub<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Difference<Self, Rhs>;
@@ -69,7 +71,7 @@ macro_rules! impl_shape_3d {
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::Add<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::Add<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Union<Self, Rhs>;
@@ -79,7 +81,7 @@ macro_rules! impl_shape_3d {
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::BitOr<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::BitOr<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Union<Self, Rhs>;
@@ -89,7 +91,7 @@ macro_rules! impl_shape_3d {
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::BitAnd<Rhs> for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape3d::Shape3d> std::ops::BitAnd<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Intersection<Self, Rhs>;
@@ -100,16 +102,22 @@ macro_rules! impl_shape_3d {
         }
 
 
-        impl<$($($lt,)* $($gen,)*)?> $crate::shape3d::Shape3d for $struct<$($($lt,)* $($gen),*)?>
+        impl<$($($lt,)* $($gen,)*)?> $crate::shape3d::Shape3d for $($struct)+<$($($lt,)* $($gen),*)?>
             $(where $($gen: $trait),*)? {}
+    };
+    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
+        impl_shape_3d!(($struct)$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
+        impl_shape_3d!((&$struct)$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
     };
     ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident),*>)?) => {
         impl_shape_3d!($struct$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
     };
 }
 
+#[derive(Clone, Debug)]
 pub struct RawShape3d<'a>(Cow<'a, str>);
-impl_shape_3d!(RawShape3d<'a>);
+impl_shape_3d!((RawShape3d)<'a, >);
+impl_shape_3d!((&RawShape3d)<'a, >);
 
 impl<'a> RawShape3d<'a> {
     pub fn new(raw: Cow<'a, str>) -> Self {
@@ -477,5 +485,33 @@ where
                 Some(Box::new(new))
             }
         }
+    }
+}
+
+/// https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#polyhedron
+#[derive(Debug, Builder)]
+pub struct Polyhedron {
+    #[builder(into, repeat, repeat_n = 1..)]
+    points: Vec<Vector3>,
+    #[builder(into, repeat)]
+    faces: Vec<Vec<usize>>,
+    convexity: Option<u32>,
+}
+
+impl_shape_3d!(Polyhedron);
+
+impl ToScad for Polyhedron {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        write!(writer, "polyhedron(points=")?;
+        self.points.to_scad(writer)?;
+        if !self.faces.is_empty() {
+            write!(writer, ", faces=")?;
+            self.faces.to_scad(writer)?;
+        }
+        if let Some(conv) = self.convexity {
+            write!(writer, ", convexity=")?;
+            conv.to_scad(writer)?;
+        }
+        write!(writer, ");")
     }
 }

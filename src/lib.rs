@@ -14,6 +14,60 @@ pub trait ToScad {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()>;
 }
 
+impl<T> ToScad for &T
+where
+    T: ToScad,
+{
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        (*self).to_scad(writer)
+    }
+}
+
+macro_rules! impl_toscad {
+    ($ty: ty as Display) => {
+        impl ToScad for $ty {
+            fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+                write!(writer, "{}", self)
+            }
+        }
+    };
+    ($ty: ty as Debug) => {
+        impl ToScad for $ty {
+            fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+                write!(writer, "{:?}", self)
+            }
+        }
+    };
+}
+
+impl_toscad!(str as Debug);
+impl_toscad!(u8 as Display);
+impl_toscad!(u16 as Display);
+impl_toscad!(u32 as Display);
+impl_toscad!(u64 as Display);
+impl_toscad!(usize as Display);
+impl_toscad!(i8 as Display);
+impl_toscad!(i16 as Display);
+impl_toscad!(i32 as Display);
+impl_toscad!(i64 as Display);
+impl_toscad!(isize as Display);
+
+impl<T> ToScad for Vec<T>
+where
+    T: ToScad,
+{
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        write!(writer, "[")?;
+        for (i, v) in self.iter().enumerate() {
+            if i > 0 {
+                write!(writer, ",")?;
+            }
+            v.to_scad(writer)?;
+        }
+        write!(writer, "]")
+    }
+}
+
 pub struct Raw<'a>(&'a str);
 
 impl<'a> Raw<'a> {
@@ -31,12 +85,6 @@ impl<'a> From<&'a str> for Raw<'a> {
 impl<'a> ToScad for Raw<'a> {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
         writer.write_all(self.0.as_bytes())
-    }
-}
-
-impl ToScad for str {
-    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        write!(writer, "{:?}", self)
     }
 }
 
