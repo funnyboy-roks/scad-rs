@@ -1,50 +1,46 @@
-use crate::{ToScad, impl_shape_2d, impl_shape_3d, shape3d::Shape3d};
+use crate::{
+    ToScad,
+    dim::{_2D, _3D, Dimension, Valid},
+    impl_shape_2d, impl_shape_3d,
+    shape::Shape,
+    shape2d::Shape2d,
+    shape3d::Shape3d,
+};
+use std::marker::PhantomData;
 
 macro_rules! impl_modifier {
-    ($name2d: ident, $name3d: ident, $symbol: literal) => {
-        pub struct $name2d<T>(T);
+    ($name: ident, $symbol: literal) => {
+        pub struct $name<D, T> {
+            t: T,
+            _d: PhantomData<D>,
+        }
 
-        impl<T> ToScad for $name2d<T>
+        impl<D: Dimension, T> ToScad for $name<D, T>
         where
             T: ToScad,
+            Shape<D, T>: Valid,
         {
             fn to_scad(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
                 write!(writer, $symbol)?;
-                self.0.to_scad(writer)
+                self.t.to_scad(writer)
             }
         }
 
-        impl_shape_2d!($name2d<T>);
-
-        impl<T> $name2d<T> {
+        impl<D, T> $name<D, T> {
             pub(crate) fn new(inner: T) -> Self {
-                Self(inner)
+                Self {
+                    t: inner,
+                    _d: PhantomData,
+                }
             }
         }
 
-        pub struct $name3d<T>(T);
-
-        impl<T> ToScad for $name3d<T>
-        where
-            T: ToScad,
-        {
-            fn to_scad(&self, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
-                write!(writer, $symbol)?;
-                self.0.to_scad(writer)
-            }
-        }
-
-        impl_shape_3d!($name3d<T>);
-
-        impl<T> $name3d<T> {
-            pub(crate) fn new(inner: T) -> Self {
-                Self(inner)
-            }
-        }
+        impl_shape_2d!(impl[T: Shape2d] for $name<_2D, T>);
+        impl_shape_3d!(impl[T: Shape3d] for $name<_3D, T>);
     };
 }
 
-impl_modifier!(Disabled2d, Disabled3d, "*");
-impl_modifier!(ShowOnly2d, ShowOnly3d, "!");
-impl_modifier!(Highlight2d, Highlight3d, "#");
-impl_modifier!(Transparent2d, Transparent3d, "#");
+impl_modifier!(Disabled, "*");
+impl_modifier!(ShowOnly, "!");
+impl_modifier!(Highlight, "#");
+impl_modifier!(Transparent, "#");

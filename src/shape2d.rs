@@ -7,52 +7,53 @@ use bauer::Builder;
 
 use crate::{
     ToScad,
-    boolean::{Difference2d, Intersection2d, Union2d},
+    boolean::{Difference, Intersection, Union},
+    dim::_2D,
     math::{ScadValue, Vector2},
-    modifiers::{Disabled2d, Highlight2d, ShowOnly2d, Transparent2d},
+    modifiers::{Disabled, Highlight, ShowOnly, Transparent},
     shape3d::LinearExtrude,
-    transform::{Rotated2d, Scaled, Translated2d},
+    transform::{Rotated, Scaled, Translated},
 };
 
 pub trait Shape2d: ToScad + Sized {
-    fn disable(self) -> Disabled2d<Self> {
-        Disabled2d::new(self)
+    fn disable(self) -> Disabled<_2D, Self> {
+        Disabled::new(self)
     }
 
-    fn show_only(self) -> ShowOnly2d<Self> {
-        ShowOnly2d::new(self)
+    fn show_only(self) -> ShowOnly<_2D, Self> {
+        ShowOnly::new(self)
     }
 
-    fn highlight(self) -> Highlight2d<Self> {
-        Highlight2d::new(self)
+    fn highlight(self) -> Highlight<_2D, Self> {
+        Highlight::new(self)
     }
 
-    fn transparent(self) -> Transparent2d<Self> {
-        Transparent2d::new(self)
+    fn transparent(self) -> Transparent<_2D, Self> {
+        Transparent::new(self)
     }
 
-    fn translate(self, translation: impl Into<Vector2>) -> Translated2d<Self> {
-        Translated2d::new(self, translation.into())
+    fn translate(self, translation: impl Into<Vector2>) -> Translated<_2D, Self> {
+        Translated::new(self, translation.into())
     }
 
-    fn rotate(self, rotation: impl Into<ScadValue>) -> Rotated2d<Self> {
-        Rotated2d::new(self, rotation.into())
+    fn rotate(self, rotation: impl Into<ScadValue>) -> Rotated<_2D, Self> {
+        Rotated::new(self, rotation.into())
     }
 
-    fn scale(self, scale: impl Into<f64>) -> Scaled<Self> {
+    fn scale(self, scale: impl Into<f64>) -> Scaled<_2D, Self> {
         Scaled::new(self, scale.into())
     }
 
-    fn difference<R>(self, other: R) -> Difference2d<Self, R> {
-        Difference2d::new(self, other)
+    fn difference<R>(self, other: R) -> Difference<_2D, Self, R> {
+        Difference::new(self, other)
     }
 
-    fn union<R>(self, other: R) -> Union2d<Self, R> {
-        Union2d::new(self, other)
+    fn union<R>(self, other: R) -> Union<_2D, Self, R> {
+        Union::new(self, other)
     }
 
-    fn intersection<R>(self, other: R) -> Intersection2d<Self, R> {
-        Intersection2d::new(self, other)
+    fn intersection<R>(self, other: R) -> Intersection<_2D, Self, R> {
+        Intersection::new(self, other)
     }
 
     fn linear_extrude(self, height: impl Into<ScadValue>) -> LinearExtrude<Self> {
@@ -71,63 +72,46 @@ pub trait Shape2d: ToScad + Sized {
 /// Implement [`Shape2d`] and some binary operations on a struct
 #[macro_export]
 macro_rules! impl_shape_2d {
-    (($($struct: tt)+)$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Sub<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $trait),*)?
-        {
-            type Output = $crate::boolean::Difference2d<Self, Rhs>;
+    // impl['a, T] for Foo<'a, T>
+    (impl$([$($tt: tt)*])? for $ty: ty) => {
+        impl<$($($tt)*,)? Rhs: $crate::shape2d::Shape2d> std::ops::Sub<Rhs> for $ty {
+            type Output = $crate::boolean::Difference<$crate::dim::_2D, Self, Rhs>;
 
             fn sub(self, rhs: Rhs) -> Self::Output {
                 $crate::shape2d::Shape2d::difference(self, rhs)
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Add<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $trait),*)?
-        {
-            type Output = $crate::boolean::Union2d<Self, Rhs>;
+        impl<$($($tt)*,)? Rhs: $crate::shape2d::Shape2d> std::ops::Add<Rhs> for $ty {
+            type Output = $crate::boolean::Union<$crate::dim::_2D, Self, Rhs>;
 
             fn add(self, rhs: Rhs) -> Self::Output {
                 $crate::shape2d::Shape2d::union(self, rhs)
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitOr<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $trait),*)?
-        {
-            type Output = $crate::boolean::Union2d<Self, Rhs>;
+        impl<$($($tt)*,)? Rhs: $crate::shape2d::Shape2d> std::ops::BitOr<Rhs> for $ty {
+            type Output = $crate::boolean::Union<$crate::dim::_2D, Self, Rhs>;
 
             fn bitor(self, rhs: Rhs) -> Self::Output {
                 $crate::shape2d::Shape2d::union(self, rhs)
             }
         }
 
-        impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitAnd<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $trait),*)?
-        {
-            type Output = $crate::boolean::Intersection2d<Self, Rhs>;
+        impl<$($($tt)*,)? Rhs: $crate::shape2d::Shape2d> std::ops::BitAnd<Rhs> for $ty {
+            type Output = $crate::boolean::Intersection<$crate::dim::_2D, Self, Rhs>;
 
             fn bitand(self, rhs: Rhs) -> Self::Output {
                 $crate::shape2d::Shape2d::intersection(self, rhs)
             }
         }
 
-
-        impl<$($($lt,)* $($gen,)*)?> $crate::shape2d::Shape2d for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $trait),*)?
-        {}
-    };
-    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
-        impl_shape_2d!(($struct)$(<$($lt,)*$($gen: $trait),*>)?);
-        impl_shape_2d!((&$struct)$(<$($lt,)*$($gen: $trait),*>)?);
-    };
-    ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident),*>)?) => {
-        impl_shape_2d!($struct$(<$($lt,)*$($gen: $crate::shape2d::Shape2d),*>)?);
+        impl$(<$($tt)*>)? $crate::shape2d::Shape2d for $ty {}
     };
 }
 
 pub struct RawShape2d<'a>(Cow<'a, str>);
-impl_shape_2d!(RawShape2d<'a>);
+impl_shape_2d!(impl['a] for RawShape2d<'a>);
 
 impl<'a> RawShape2d<'a> {
     pub fn new(raw: Cow<'a, str>) -> Self {
@@ -156,7 +140,7 @@ impl<'a> ToScad for RawShape2d<'a> {
 pub struct ClosureShape2d<C> {
     closure: C,
 }
-impl_shape_2d!(ClosureShape2d<C: Fn(&mut dyn Write) -> io::Result<()>>);
+impl_shape_2d!(impl[C: Fn(&mut dyn Write) -> io::Result<()>] for ClosureShape2d<C>);
 
 impl<C> ClosureShape2d<C>
 where
@@ -179,7 +163,7 @@ where
 pub struct Circle {
     radius: ScadValue,
 }
-impl_shape_2d!(Circle);
+impl_shape_2d!(impl for Circle);
 
 impl Circle {
     pub fn with_radius(radius: impl Into<ScadValue>) -> Self {
@@ -345,4 +329,4 @@ impl ToScad for Text<'_> {
     }
 }
 
-impl_shape_2d!(Text<'a>);
+impl_shape_2d!(impl['a] for Text<'a>);

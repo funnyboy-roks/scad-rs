@@ -211,93 +211,44 @@ impl ScadValue {
     }
 }
 
-impl Div<ScadValue> for ScadValue {
-    type Output = ScadValue;
+macro_rules! impl_op {
+    ($name: ident, $func: ident, $op: tt) => {
+        impl $name<ScadValue> for ScadValue {
+            type Output = ScadValue;
 
-    fn div(self, rhs: ScadValue) -> Self::Output {
-        match (self, rhs) {
-            (ScadValue::Float(l), ScadValue::Float(r)) => ScadValue::Float(l / r),
-            (l, r) => l.op("/", r),
+            fn $func(self, rhs: ScadValue) -> Self::Output {
+                match (self, rhs) {
+                    (ScadValue::Float(l), ScadValue::Float(r)) => ScadValue::Float(l $op r),
+                    (l, r) => l.op(stringify!($op), r),
+                }
+            }
         }
-    }
+
+        impl $name<f64> for ScadValue {
+            type Output = ScadValue;
+
+            fn $func(self, rhs: f64) -> Self::Output {
+                match self {
+                    ScadValue::Float(l) => ScadValue::Float(l $op rhs),
+                    l => l.op(stringify!($op), rhs.into()),
+                }
+            }
+        }
+
+        impl<T> $name<T> for Variable where T: Into<ScadValue> {
+            type Output = ScadValue;
+
+            fn $func(self, rhs: T) -> Self::Output {
+                ScadValue::Variable(self).op(stringify!($op), rhs.into())
+            }
+        }
+    };
 }
 
-impl Div<f64> for ScadValue {
-    type Output = ScadValue;
-
-    fn div(self, rhs: f64) -> Self::Output {
-        match self {
-            ScadValue::Float(l) => ScadValue::Float(l / rhs),
-            l => l.op("/", rhs.into()),
-        }
-    }
-}
-
-impl Mul<ScadValue> for ScadValue {
-    type Output = ScadValue;
-
-    fn mul(self, rhs: ScadValue) -> Self::Output {
-        match (self, rhs) {
-            (ScadValue::Float(l), ScadValue::Float(r)) => ScadValue::Float(l * r),
-            (l, r) => l.op("*", r),
-        }
-    }
-}
-
-impl Mul<f64> for ScadValue {
-    type Output = ScadValue;
-
-    fn mul(self, rhs: f64) -> Self::Output {
-        match self {
-            ScadValue::Float(l) => ScadValue::Float(l * rhs),
-            l => l.op("*", rhs.into()),
-        }
-    }
-}
-
-impl Sub<ScadValue> for ScadValue {
-    type Output = ScadValue;
-
-    fn sub(self, rhs: ScadValue) -> Self::Output {
-        match (self, rhs) {
-            (ScadValue::Float(l), ScadValue::Float(r)) => ScadValue::Float(l - r),
-            (l, r) => l.op("-", r),
-        }
-    }
-}
-
-impl Sub<f64> for ScadValue {
-    type Output = ScadValue;
-
-    fn sub(self, rhs: f64) -> Self::Output {
-        match self {
-            ScadValue::Float(l) => ScadValue::Float(l - rhs),
-            l => l.op("-", rhs.into()),
-        }
-    }
-}
-
-impl Add<ScadValue> for ScadValue {
-    type Output = ScadValue;
-
-    fn add(self, rhs: ScadValue) -> Self::Output {
-        match (self, rhs) {
-            (ScadValue::Float(l), ScadValue::Float(r)) => ScadValue::Float(l + r),
-            (l, r) => l.op("+", r),
-        }
-    }
-}
-
-impl Add<f64> for ScadValue {
-    type Output = ScadValue;
-
-    fn add(self, rhs: f64) -> Self::Output {
-        match self {
-            ScadValue::Float(l) => ScadValue::Float(l + rhs),
-            l => l.op("+", rhs.into()),
-        }
-    }
-}
+impl_op!(Div, div, /);
+impl_op!(Mul, mul, *);
+impl_op!(Sub, sub, -);
+impl_op!(Add, add, +);
 
 impl From<f64> for ScadValue {
     fn from(value: f64) -> Self {

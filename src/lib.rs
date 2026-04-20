@@ -6,11 +6,17 @@ use std::{
 use crate::math::Variable;
 
 pub mod boolean;
+pub mod dim;
 pub mod math;
 pub mod modifiers;
+pub mod shape;
 pub mod shape2d;
 pub mod shape3d;
 pub mod transform;
+
+pub(crate) mod sealed {
+    pub trait Sealed {}
+}
 
 pub trait ToScad {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()>;
