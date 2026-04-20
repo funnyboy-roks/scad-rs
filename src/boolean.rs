@@ -180,3 +180,129 @@ impl_boolean!(Intersection, "intersection");
 impl_dyn_boolean!(DynDifference, "difference", SubAssign, sub_assign);
 impl_dyn_boolean!(DynUnion, "union", AddAssign, add_assign);
 impl_dyn_boolean!(DynIntersection, "intersection", BitAndAssign, bitand_assign);
+
+#[macro_export]
+macro_rules! union {
+    [$($expr: expr),* $(,)?] => {{
+        let mut u = $crate::boolean::DynUnion::with_capacity(
+            const {
+                [$(stringify!($expr)),*].len()
+            }
+        );
+        $(u.add($expr);)*
+        u
+    }};
+}
+
+#[macro_export]
+macro_rules! intersection {
+    [$($expr: expr),* $(,)?] => {{
+        let mut i = $crate::boolean::DynIntersection::with_capacity(
+            const {
+                [$(stringify!($expr)),*].len()
+            }
+        );
+        $(i.add($expr);)*
+        i
+    }};
+}
+
+/// Shape for accumulating boolean operations
+///
+/// ```
+/// # use scad::{shape3d::{Cube, Sphere}, ToScad, shape::DynShape};
+/// let mut shape = DynShape::new();
+///
+/// shape += Cube::with_size([10, 10, 10]);
+/// shape -= Sphere::with_radius(8);
+/// shape &= Cube::with_size([12, 5, 12]);
+/// # shape.to_scad(&mut std::io::empty()).unwrap();
+/// ```
+pub struct DynShape<D> {
+    inner: Option<Box<dyn ToScad>>,
+    _d: PhantomData<D>,
+}
+impl_shape_2d!(impl for DynShape<_2D>);
+impl_shape_3d!(impl for DynShape<_3D>);
+
+impl<D: Dimension> ToScad for DynShape<D> {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        match &self.inner {
+            Some(inner) => inner.to_scad(writer),
+            None => panic!("to_scad called on empty DynShape3d"),
+        }
+    }
+}
+
+impl<D> Default for DynShape<D> {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            _d: PhantomData,
+        }
+    }
+}
+
+impl<D> DynShape<D> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_none()
+    }
+}
+
+impl<D, T> AddAssign<T> for DynShape<D>
+where
+    T: ToScad + 'static,
+    Shape<D, T>: Valid,
+{
+    fn add_assign(&mut self, rhs: T) {
+        self.inner = match self.inner.take() {
+            None => Some(Box::new(rhs)),
+            Some(inner) => {
+                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
+                // using these methods
+                let new = unsafe { DynUnion::<_3D>::pair_raw(inner, Box::new(rhs)) };
+                Some(Box::new(new))
+            }
+        }
+    }
+}
+
+impl<D, T> SubAssign<T> for DynShape<D>
+where
+    T: ToScad + 'static,
+    Shape<D, T>: Valid,
+{
+    fn sub_assign(&mut self, rhs: T) {
+        self.inner = match self.inner.take() {
+            None => panic!("Attempt to subtract from empty DynShape"),
+            Some(inner) => {
+                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
+                // using these methods
+                let new = unsafe { DynDifference::<_3D>::pair_raw(inner, Box::new(rhs)) };
+                Some(Box::new(new))
+            }
+        }
+    }
+}
+
+impl<D, T> BitAndAssign<T> for DynShape<D>
+where
+    T: ToScad + 'static,
+    Shape<D, T>: Valid,
+{
+    fn bitand_assign(&mut self, rhs: T) {
+        self.inner = match self.inner.take() {
+            None => None,
+            Some(inner) => {
+                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
+                // using these methods
+                let new = unsafe { DynIntersection::<_3D>::pair_raw(inner, Box::new(rhs)) };
+                Some(Box::new(new))
+            }
+        }
+    }
+}

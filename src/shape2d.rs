@@ -11,6 +11,7 @@ use crate::{
     dim::_2D,
     math::{ScadValue, Vector2},
     modifiers::{Disabled, Highlight, ShowOnly, Transparent},
+    shape::ClosureShape,
     shape3d::LinearExtrude,
     transform::{Rotated, Scaled, Translated},
 };
@@ -61,7 +62,7 @@ pub trait Shape2d: ToScad + Sized {
     }
 
     fn number_of_segments(self, n: u32) -> impl Shape2d {
-        ClosureShape2d::new(move |writer: &mut dyn Write| {
+        ClosureShape::new(move |writer: &mut dyn Write| {
             write!(writer, "let ($fn = {}) {{", n)?;
             self.to_scad(writer)?;
             write!(writer, "}}")
@@ -69,9 +70,11 @@ pub trait Shape2d: ToScad + Sized {
     }
 }
 
-/// Implement [`Shape2d`] and some binary operations on a struct
+impl<T> Shape2d for &T where T: Shape2d {}
+
 #[macro_export]
-macro_rules! impl_shape_2d {
+#[doc(hidden)]
+macro_rules! impl_shape_2d_inner {
     // impl['a, T] for Foo<'a, T>
     (impl$([$($tt: tt)*])? for $ty: ty) => {
         impl<$($($tt)*,)? Rhs: $crate::shape2d::Shape2d> std::ops::Sub<Rhs> for $ty {
@@ -105,59 +108,18 @@ macro_rules! impl_shape_2d {
                 $crate::shape2d::Shape2d::intersection(self, rhs)
             }
         }
-
-        impl$(<$($tt)*>)? $crate::shape2d::Shape2d for $ty {}
     };
 }
 
-pub struct RawShape2d<'a>(Cow<'a, str>);
-impl_shape_2d!(impl['a] for RawShape2d<'a>);
-
-impl<'a> RawShape2d<'a> {
-    pub fn new(raw: Cow<'a, str>) -> Self {
-        Self(raw)
-    }
-}
-
-impl<'a> From<&'a str> for RawShape2d<'a> {
-    fn from(value: &'a str) -> Self {
-        Self::new(Cow::Borrowed(value))
-    }
-}
-
-impl From<String> for RawShape2d<'static> {
-    fn from(value: String) -> Self {
-        Self::new(Cow::Owned(value))
-    }
-}
-
-impl<'a> ToScad for RawShape2d<'a> {
-    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        writer.write_all(self.0.as_bytes())
-    }
-}
-
-pub struct ClosureShape2d<C> {
-    closure: C,
-}
-impl_shape_2d!(impl[C: Fn(&mut dyn Write) -> io::Result<()>] for ClosureShape2d<C>);
-
-impl<C> ClosureShape2d<C>
-where
-    C: Fn(&mut dyn Write) -> io::Result<()>,
-{
-    pub const fn new(closure: C) -> Self {
-        Self { closure }
-    }
-}
-
-impl<C> ToScad for ClosureShape2d<C>
-where
-    C: Fn(&mut dyn Write) -> io::Result<()>,
-{
-    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        (self.closure)(writer)
-    }
+/// Implement [`Shape2d`] and some binary operations on a struct
+#[macro_export]
+macro_rules! impl_shape_2d {
+    // impl['a, T] for Foo<'a, T>
+    (impl$([$($tt: tt)*])? for $ty: ty) => {
+        $crate::impl_shape_2d_inner!(impl$([$($tt)*])? for $ty);
+        impl$(<$($tt)*>)? $crate::shape2d::Shape2d for $ty {}
+        $crate::impl_shape_2d_inner!(impl$([$($tt)*])? for &$ty);
+    };
 }
 
 pub struct Circle {

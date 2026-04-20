@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     io::{self, Write},
     ops::{AddAssign, BitAndAssign, SubAssign},
 };
@@ -81,8 +80,10 @@ pub trait Shape3d: ToScad + Sized {
     }
 }
 
-/// Implement [`Shape3d`] and some binary operations on a struct
+impl<T> Shape3d for &T where T: Shape3d {}
+
 #[macro_export]
+#[doc(hidden)]
 macro_rules! impl_shape_3d_inner {
     // impl['a, T] for Foo<'a, T>
     (impl$([$($tt: tt)*])? for $ty: ty) => {
@@ -117,9 +118,6 @@ macro_rules! impl_shape_3d_inner {
                 $crate::shape3d::Shape3d::intersection(self, rhs)
             }
         }
-
-
-        impl$(<$($tt)*>)? $crate::shape3d::Shape3d for $ty {}
     };
 }
 
@@ -129,36 +127,9 @@ macro_rules! impl_shape_3d {
     // impl['a, T] for Foo<'a, T>
     (impl$([$($tt: tt)*])? for $ty: ty) => {
         $crate::impl_shape_3d_inner!(impl$([$($tt)*])? for $ty);
+        impl$(<$($tt)*>)? $crate::shape3d::Shape3d for $ty {}
         $crate::impl_shape_3d_inner!(impl$([$($tt)*])? for &$ty);
     };
-}
-
-#[derive(Clone, Debug)]
-pub struct RawShape3d<'a>(Cow<'a, str>);
-impl_shape_3d!(impl['a] for RawShape3d<'a>);
-
-impl<'a> RawShape3d<'a> {
-    pub fn new(raw: Cow<'a, str>) -> Self {
-        Self(raw)
-    }
-}
-
-impl<'a> From<&'a str> for RawShape3d<'a> {
-    fn from(value: &'a str) -> Self {
-        Self::new(Cow::Borrowed(value))
-    }
-}
-
-impl From<String> for RawShape3d<'static> {
-    fn from(value: String) -> Self {
-        Self::new(Cow::Owned(value))
-    }
-}
-
-impl<'a> ToScad for RawShape3d<'a> {
-    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        writer.write_all(self.0.as_bytes())
-    }
 }
 
 #[derive(Debug)]
@@ -305,7 +276,7 @@ impl ToScad for Sphere {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct LinearExtrude<T> {
     inner: T,
     height: ScadValue,

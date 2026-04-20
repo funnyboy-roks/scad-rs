@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     io::{self, Write},
     marker::PhantomData,
     ops::{Deref, DerefMut},
@@ -112,17 +113,49 @@ where
 impl_shape_2d!(impl[T: Shape2d] for Shape<_2D, T>);
 impl_shape_3d!(impl[T: Shape3d] for Shape<_3D, T>);
 
+pub struct Raw<'a, D> {
+    raw: Cow<'a, str>,
+    _d: PhantomData<D>,
+}
+
+impl_shape_3d!(impl for Raw<'_, _3D>);
+impl_shape_2d!(impl for Raw<'_, _2D>);
+
+impl<'a> Raw<'a, _2D> {
+    pub fn new_2d(raw: Cow<'a, str>) -> Self {
+        Self {
+            raw,
+            _d: PhantomData,
+        }
+    }
+}
+
+impl<'a> Raw<'a, _3D> {
+    pub fn new_3d(raw: Cow<'a, str>) -> Self {
+        Self {
+            raw,
+            _d: PhantomData,
+        }
+    }
+}
+
+impl<'a, D: Dimension> ToScad for Raw<'a, D> {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        writer.write_all(self.raw.as_bytes())
+    }
+}
+
 #[macro_export]
 macro_rules! hull {
     [$($e: expr),+$(,)?] => {{
-        let mut h = $crate::shape::Hull::with_capacity(hull![@count $($e),*]);
+        let mut h = $crate::shape::Hull::with_capacity(
+            const {
+                [$(stringify!($e)),*].len()
+            }
+        );
         $(h.add($e);)*
         h
     }};
-    [@count] => { 0 };
-    [@count $e0: expr$(, $e: expr)*] => {
-        1 + hull![@count $($e),*]
-    }
 }
 
 pub struct Hull<D> {
