@@ -107,9 +107,10 @@ macro_rules! impl_dyn_boolean {
                 unsafe { Self::pair_raw(Box::new(lhs), Box::new(rhs)) }
             }
 
-            #[doc = "# SAFETY"]
-            #[doc = ""]
-            #[doc = concat!("The caller must ensure that lhs and rhs are both [`", stringify!($trait), "`].")]
+            /// # SAFETY
+            ///
+            /// The caller must ensure that lhs and rhs are both valid shaped for the dimension.
+            #[doc(hidden)]
             pub unsafe fn pair_raw(lhs: Box<dyn ToScad>, rhs: Box<dyn ToScad>) -> Self
             {
                 Self {
@@ -210,7 +211,7 @@ macro_rules! intersection {
 /// Shape for accumulating boolean operations
 ///
 /// ```
-/// # use scad::{shape3d::{Cube, Sphere}, ToScad, shape::DynShape};
+/// # use scad::{shape3d::{Cube, Sphere}, ToScad, boolean::DynShape};
 /// let mut shape = DynShape::new();
 ///
 /// shape += Cube::with_size([10, 10, 10]);

@@ -1,13 +1,10 @@
-use std::{
-    io::{self, Write},
-    ops::{AddAssign, BitAndAssign, SubAssign},
-};
+use std::io::{self, Write};
 
 use bauer::Builder;
 
 use crate::{
     ToScad,
-    boolean::{Difference, DynDifference, DynIntersection, DynUnion, Intersection, Union},
+    boolean::{Difference, Intersection, Union},
     dim::_3D,
     math::{ScadValue, Vector3},
     modifiers::{Disabled, Highlight, ShowOnly, Transparent},
@@ -299,89 +296,6 @@ where
         write!(writer, "){{")?;
         self.inner.to_scad(writer)?;
         write!(writer, "}}")
-    }
-}
-
-/// 3d shape for accumulating boolean operations
-///
-/// ```rust
-/// # use scad::{shape3d::{Cube, Sphere, DynShape3d}, ToScad};
-/// let mut shape = DynShape3d::new();
-///
-/// shape += Cube::with_size([10, 10, 10]);
-/// shape -= Sphere::with_radius(8);
-/// shape &= Cube::with_size([12, 5, 12]);
-/// # shape.to_scad(&mut std::io::empty()).unwrap();
-/// ```
-#[derive(Default)]
-pub struct DynShape3d {
-    inner: Option<Box<dyn ToScad>>,
-}
-impl_shape_3d!(impl for DynShape3d);
-
-impl ToScad for DynShape3d {
-    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        match &self.inner {
-            Some(inner) => inner.to_scad(writer),
-            None => panic!("to_scad called on empty DynShape3d"),
-        }
-    }
-}
-
-impl DynShape3d {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl<T> AddAssign<T> for DynShape3d
-where
-    T: Shape3d + 'static,
-{
-    fn add_assign(&mut self, rhs: T) {
-        self.inner = match self.inner.take() {
-            None => Some(Box::new(rhs)),
-            Some(inner) => {
-                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
-                // using these methods
-                let new = unsafe { DynUnion::<_3D>::pair_raw(inner, Box::new(rhs)) };
-                Some(Box::new(new))
-            }
-        }
-    }
-}
-
-impl<T> SubAssign<T> for DynShape3d
-where
-    T: Shape3d + 'static,
-{
-    fn sub_assign(&mut self, rhs: T) {
-        self.inner = match self.inner.take() {
-            None => None,
-            Some(inner) => {
-                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
-                // using these methods
-                let new = unsafe { DynDifference::<_3D>::pair_raw(inner, Box::new(rhs)) };
-                Some(Box::new(new))
-            }
-        }
-    }
-}
-
-impl<T> BitAndAssign<T> for DynShape3d
-where
-    T: Shape3d + 'static,
-{
-    fn bitand_assign(&mut self, rhs: T) {
-        self.inner = match self.inner.take() {
-            None => None,
-            Some(inner) => {
-                // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
-                // using these methods
-                let new = unsafe { DynIntersection::<_3D>::pair_raw(inner, Box::new(rhs)) };
-                Some(Box::new(new))
-            }
-        }
     }
 }
 
