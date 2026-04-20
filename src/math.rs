@@ -5,7 +5,7 @@ use std::{
 
 use crate::ToScad;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Vector3 {
     pub x: ScadValue,
     pub y: ScadValue,
@@ -88,7 +88,7 @@ impl ToScad for Vector3 {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Vector2 {
     pub x: ScadValue,
     pub y: ScadValue,
@@ -142,22 +142,72 @@ impl ToScad for Vector2 {
     }
 }
 
-#[derive(Debug, Clone)]
+#[macro_export]
+macro_rules! var {
+    ($(
+        $(#[doc = $doc: literal])?
+        let $($)?$name: ident = $value: expr;
+    )+) => {
+        $(
+            let $name = $crate::math::Variable::new(stringify!($name), $value as f64, concat!("", $($doc)?));
+        )*
+    };
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Variable {
+    name: &'static str,
+    default_value: f64,
+    description: &'static str,
+}
+
+impl Variable {
+    pub fn new(name: &'static str, default_value: f64, description: &'static str) -> Self {
+        Self {
+            name,
+            default_value,
+            description,
+        }
+    }
+
+    pub fn write_definition(&self, writer: &mut dyn Write) -> io::Result<()> {
+        if !self.description.trim().is_empty() {
+            writeln!(writer, "// {}", self.description)?;
+        }
+        writeln!(writer, "{} = {};", self.name, self.default_value)
+    }
+}
+
+impl ToScad for Variable {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        writer.write_all(self.name.as_bytes())
+    }
+}
+
+/// NOTE: This leaks memory like crazy, but it shouldn't really matter as the intended use-case is
+/// in very short batch programs
+#[derive(Debug, Clone, Copy)]
 pub enum ScadValue {
     Float(f64),
-    Variable(String),
+    Variable(Variable),
     Expression {
-        args: Box<(ScadValue, ScadValue)>,
+        arg0: &'static ScadValue,
+        arg1: &'static ScadValue,
         op: &'static str,
     },
 }
 
 impl ScadValue {
-    pub fn op(self, op: &'static str, rhs: ScadValue) -> Self {
+    fn op(self, op: &'static str, rhs: ScadValue) -> Self {
         Self::Expression {
-            args: Box::new((self, rhs)),
+            arg0: self.into_static(),
+            arg1: rhs.into_static(),
             op,
         }
+    }
+
+    fn into_static(self) -> &'static Self {
+        Box::leak(Box::new(self))
     }
 }
 
@@ -261,9 +311,9 @@ impl From<i32> for ScadValue {
     }
 }
 
-impl From<&str> for ScadValue {
-    fn from(value: &str) -> Self {
-        Self::Variable(value.into())
+impl From<Variable> for ScadValue {
+    fn from(value: Variable) -> Self {
+        Self::Variable(value)
     }
 }
 
@@ -271,13 +321,13 @@ impl ToScad for ScadValue {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
         match self {
             ScadValue::Float(f) => write!(writer, "{}", f),
-            ScadValue::Variable(v) => write!(writer, "{}", v),
-            ScadValue::Expression { args, op } => {
-                write!(writer, "(")?;
-                args.0.to_scad(writer)?;
+            ScadValue::Variable(v) => v.to_scad(writer),
+            ScadValue::Expression { arg0, arg1, op } => {
+                write!(writer, "((")?;
+                arg0.to_scad(writer)?;
                 write!(writer, "){}(", op)?;
-                args.0.to_scad(writer)?;
-                write!(writer, ")")
+                arg1.to_scad(writer)?;
+                write!(writer, "))")
             }
         }
     }

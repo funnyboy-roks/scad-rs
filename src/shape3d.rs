@@ -55,6 +55,14 @@ pub trait Shape3d: ToScad + Sized {
     fn intersection<R>(self, other: R) -> Intersection<Self, R> {
         Intersection::new(self, other)
     }
+
+    fn number_of_segments(self, n: u32) -> impl Shape3d {
+        ClosureShape3d::new(move |writer: &mut dyn Write| {
+            write!(writer, "let ($fn = {}) {{", n)?;
+            self.to_scad(writer)?;
+            write!(writer, "}}")
+        })
+    }
 }
 
 /// Implement [`Shape3d`] and some binary operations on a struct
@@ -313,24 +321,24 @@ where
     }
 }
 
-type ScadClosure = dyn Fn(&mut dyn Write) -> io::Result<()>;
-pub struct ClosureShape3d {
-    closure: Box<ScadClosure>,
+pub struct ClosureShape3d<C> {
+    closure: C,
 }
-impl_shape_3d!(ClosureShape3d);
+impl_shape_3d!(ClosureShape3d<C: Fn(&mut dyn Write) -> io::Result<()>>);
 
-impl ClosureShape3d {
-    pub fn new<C>(closure: C) -> Self
-    where
-        C: Fn(&mut dyn Write) -> io::Result<()> + 'static,
-    {
-        Self {
-            closure: Box::new(closure),
-        }
+impl<C> ClosureShape3d<C>
+where
+    C: Fn(&mut dyn Write) -> io::Result<()>,
+{
+    pub const fn new(closure: C) -> Self {
+        Self { closure }
     }
 }
 
-impl ToScad for ClosureShape3d {
+impl<C> ToScad for ClosureShape3d<C>
+where
+    C: Fn(&mut dyn Write) -> io::Result<()>,
+{
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
         (self.closure)(writer)
     }

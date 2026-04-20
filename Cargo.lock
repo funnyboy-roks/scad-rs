@@ -4,9 +4,18 @@ version = 4
 
 [[package]]
 name = "bauer"
-version = "0.2.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41094689a67452e35fe6858380ebd5d59cb6417c11129514223647d1b4b821bb"
+checksum = "786415e135db82124df10b5e2b2cbc378e0f8f0ff786428facb678cfbe04b3dd"
+dependencies = [
+ "bauer-macros",
+]
+
+[[package]]
+name = "bauer-macros"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cb0c6b970485a17da3b48dc29bd4c8ba04c8333177519a32e2953b2c1271d4f"
 dependencies = [
  "convert_case",
  "proc-macro2",

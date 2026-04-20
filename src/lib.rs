@@ -1,7 +1,9 @@
 use std::{
     io::{self, Write},
-    path::PathBuf,
+    path::Path,
 };
+
+use crate::math::Variable;
 
 pub mod boolean;
 pub mod math;
@@ -89,24 +91,25 @@ impl<'a> ToScad for Raw<'a> {
 }
 
 #[derive(bauer::Builder)]
-pub struct Scad {
+#[builder(kind = "type-state")]
+pub struct Scad<'a> {
     /// Import modules and functions using the `use` keyword
     ///
     /// See <https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Include_Statement>
-    #[builder(repeat, into)]
-    uses: Vec<PathBuf>,
+    #[builder(repeat, adapter = |path: &'a impl AsRef<Path>| path.as_ref())]
+    uses: Vec<&'a Path>,
     /// `$fn`
     ///
     /// The number of segments to use when rendering a circle
     #[builder(default = "0")]
     number_of_segments: u32,
     #[builder(repeat)]
-    parameters: Vec<(String, f64)>,
+    variables: Vec<Variable>,
     #[builder(repeat)]
-    objects: Vec<Box<dyn ToScad>>,
+    objects: Vec<&'a dyn ToScad>,
 }
 
-impl ToScad for Scad {
+impl ToScad for Scad<'_> {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
         for path in &self.uses {
             if let Some(path) = path.to_str() {
@@ -116,8 +119,8 @@ impl ToScad for Scad {
             }
         }
 
-        for (name, default) in &self.parameters {
-            writeln!(writer, "{} = {};", name, default)?;
+        for var in &self.variables {
+            var.write_definition(writer)?;
         }
 
         if self.number_of_segments != 0 {

@@ -58,6 +58,14 @@ pub trait Shape2d: ToScad + Sized {
     fn linear_extrude(self, height: impl Into<ScadValue>) -> LinearExtrude<Self> {
         LinearExtrude::new(self, height.into())
     }
+
+    fn number_of_segments(self, n: u32) -> impl Shape2d {
+        ClosureShape2d::new(move |writer: &mut dyn Write| {
+            write!(writer, "let ($fn = {}) {{", n)?;
+            self.to_scad(writer)?;
+            write!(writer, "}}")
+        })
+    }
 }
 
 /// Implement [`Shape2d`] and some binary operations on a struct
@@ -65,7 +73,7 @@ pub trait Shape2d: ToScad + Sized {
 macro_rules! impl_shape_2d {
     (($($struct: tt)+)$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
         impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Sub<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $crate::shape2d::Shape2d),*)?
+            $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Difference2d<Self, Rhs>;
 
@@ -75,7 +83,7 @@ macro_rules! impl_shape_2d {
         }
 
         impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::Add<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $crate::shape2d::Shape2d),*)?
+            $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Union2d<Self, Rhs>;
 
@@ -85,7 +93,7 @@ macro_rules! impl_shape_2d {
         }
 
         impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitOr<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $crate::shape2d::Shape2d),*)?
+            $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Union2d<Self, Rhs>;
 
@@ -95,7 +103,7 @@ macro_rules! impl_shape_2d {
         }
 
         impl<$($($lt,)* $($gen,)*)? Rhs: $crate::shape2d::Shape2d> std::ops::BitAnd<Rhs> for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $crate::shape2d::Shape2d),*)?
+            $(where $($gen: $trait),*)?
         {
             type Output = $crate::boolean::Intersection2d<Self, Rhs>;
 
@@ -106,14 +114,15 @@ macro_rules! impl_shape_2d {
 
 
         impl<$($($lt,)* $($gen,)*)?> $crate::shape2d::Shape2d for $($struct)+<$($($lt,)* $($gen),*)?>
-            $(where $($gen: $crate::shape2d::Shape2d),*)? {}
+            $(where $($gen: $trait),*)?
+        {}
     };
     ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident: $trait: path),*>)?) => {
         impl_shape_2d!(($struct)$(<$($lt,)*$($gen: $trait),*>)?);
         impl_shape_2d!((&$struct)$(<$($lt,)*$($gen: $trait),*>)?);
     };
     ($struct: ident$(<$($lt: lifetime),*$(,)? $($gen: ident),*>)?) => {
-        impl_shape_2d!($struct$(<$($lt,)*$($gen: $crate::shape3d::Shape3d),*>)?);
+        impl_shape_2d!($struct$(<$($lt,)*$($gen: $crate::shape2d::Shape2d),*>)?);
     };
 }
 
@@ -141,6 +150,29 @@ impl From<String> for RawShape2d<'static> {
 impl<'a> ToScad for RawShape2d<'a> {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
         writer.write_all(self.0.as_bytes())
+    }
+}
+
+pub struct ClosureShape2d<C> {
+    closure: C,
+}
+impl_shape_2d!(ClosureShape2d<C: Fn(&mut dyn Write) -> io::Result<()>>);
+
+impl<C> ClosureShape2d<C>
+where
+    C: Fn(&mut dyn Write) -> io::Result<()>,
+{
+    pub const fn new(closure: C) -> Self {
+        Self { closure }
+    }
+}
+
+impl<C> ToScad for ClosureShape2d<C>
+where
+    C: Fn(&mut dyn Write) -> io::Result<()>,
+{
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        (self.closure)(writer)
     }
 }
 
