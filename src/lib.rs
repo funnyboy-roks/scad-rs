@@ -109,7 +109,7 @@ pub struct Scad<'a> {
     /// The number of segments to use when rendering a circle
     #[builder(default = "0")]
     number_of_segments: u32,
-    #[builder(repeat)]
+    #[builder(default, adapter = |iter: impl IntoIterator<Item = Variable>| iter.into_iter().collect())]
     variables: Vec<Variable>,
     #[builder(repeat)]
     objects: Vec<&'a dyn ToScad>,
