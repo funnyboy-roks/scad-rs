@@ -7,7 +7,7 @@ use std::{
 
 use scad::{
     Scad, ToScad,
-    boolean::DynUnion2d,
+    boolean::DynUnion,
     impl_shape_3d,
     math::Vector3,
     shape2d::{HorizontalAlign, Shape2d, Text, VerticalAlign},
@@ -29,25 +29,21 @@ impl RoundedCube {
     }
 }
 
-impl_shape_3d!(RoundedCube);
+impl_shape_3d!(impl for RoundedCube);
 
 // losely based on https://openhome.cc/eGossip/OpenSCAD/lib3x-rounded_cube.html
 impl ToScad for RoundedCube {
     fn to_scad(&self, writer: &mut dyn io::Write) -> io::Result<()> {
         // hull of spheres at corners of the cube (inset by radius)
 
-        let edge_len = self.size.clone() - Vector3::from(2.) * self.corner_r;
+        let edge_len = self.size - Vector3::from(2.) * self.corner_r;
 
         let h = (0..8)
             .map(|i| {
                 let x = (i & 1) as f64;
                 let y = ((i & 2) >> 1) as f64;
                 let z = ((i & 4) >> 2) as f64;
-                let offset = (
-                    edge_len.x.clone() * x,
-                    edge_len.y.clone() * y,
-                    edge_len.z.clone() * z,
-                );
+                let offset = (edge_len.x * x, edge_len.y * y, edge_len.z * z);
 
                 Sphere::with_radius(self.corner_r)
                     .translate(offset)
@@ -74,7 +70,7 @@ fn main() -> io::Result<()> {
             thicc - text_thicc + 0.001,
         ));
 
-    let lines = ["PETG", "Trans", "Teal"];
+    let lines = ["PLA", "Wood"];
 
     let text_size = 4.;
     let line_height = text_size + 2.;
@@ -87,7 +83,7 @@ fn main() -> io::Result<()> {
             0.
         };
 
-    let mut union = DynUnion2d::new();
+    let mut union = DynUnion::new();
 
     for (i, line) in lines.into_iter().enumerate() {
         let text = Text::builder()
@@ -110,7 +106,7 @@ fn main() -> io::Result<()> {
 
     Scad::builder()
         .number_of_segments(100)
-        .objects(Box::new(base + text))
+        .objects(&(base + text))
         .build()
         .to_scad(&mut out)?;
 
