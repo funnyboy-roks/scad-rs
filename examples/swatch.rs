@@ -10,6 +10,7 @@ use scad::{
     boolean::DynUnion,
     impl_shape_3d,
     math::{ScadValue, Vector3},
+    raw,
     shape::Hull,
     shape2d::{HorizontalAlign, Shape2d, Text, VerticalAlign},
     shape3d::{Cube, Shape3d, Sphere},
@@ -58,9 +59,6 @@ impl ToScad for RoundedCube {
 }
 
 fn main() -> io::Result<()> {
-    let out = File::create("out.scad")?;
-    let mut out = BufWriter::new(out);
-
     var! {
         let swatch_size = 24;
         let thicc = 2.25;
@@ -68,6 +66,12 @@ fn main() -> io::Result<()> {
         let text_size = 4;
         => vars
     }
+
+    let raw = raw! {
+        translate([3, 4, 5]) {
+            cube([2, 1, 5]);
+        }
+    };
 
     let base = RoundedCube::new((swatch_size, swatch_size, thicc), 1)
         - Cube::with_size((swatch_size - 4, swatch_size - 4, text_thicc)).translate((
@@ -114,7 +118,7 @@ fn main() -> io::Result<()> {
         .objects(&(base + text))
         .variables(vars)
         .build()
-        .to_scad(&mut out)?;
+        .to_scad(&mut io::stdout().lock())?;
 
     Ok(())
 }

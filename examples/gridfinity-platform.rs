@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{self, BufWriter},
-};
+use std::io;
 
 use scad::{
     Scad, ToScad,
@@ -12,9 +9,6 @@ use scad::{
 };
 
 fn main() -> io::Result<()> {
-    let out = File::create("out.scad")?;
-    let mut out = BufWriter::new(out);
-
     let x_scale = 5;
     let y_scale = 2;
 
@@ -44,10 +38,9 @@ fn main() -> io::Result<()> {
 
     Scad::builder()
         .number_of_segments(50)
+        .objects(&full_base)
         .build()
-        .to_scad(&mut out)?;
-
-    full_base.to_scad(&mut out)?;
+        .to_scad(&mut io::stdout().lock())?;
 
     Ok(())
 }

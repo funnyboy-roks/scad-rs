@@ -1,5 +1,12 @@
 # Scad
 
+> [!WARNING]
+>
+> This library, while generally functional, is not intended for use and
+> is really just a proof-of-concept at the moment.  If you are
+> interested in using this a proper library, let me know and I'll make
+> it so! :)
+
 This is a library for writing [OpenSCAD] code using Rust structures and
 type system.
 
@@ -17,19 +24,15 @@ let obj = Cube::with_size((5, 5, 2.5)) + Sphere::with_radius(0.5).translate((0, 
 
 let scad = Scad::builder()
     .number_of_segments(100)
-    .objects(Box::new(obj))
+    .objects(&obj)
     .build()
-    .to_scad(&mut file);
+    .to_scad(&mut io::stdout().lock());
 ```
 
 ## Modelling
 
-When modelling an object, I use the following command (each running in a
-tmux window)
+When modelling an object, I use the following command
 
 ```sh
-openscad --viewall out.scad # open openscad
-cargo watch -w examples -w src -- cargo r --example swatch # cargo-watch to autmatically re-run when changes are made
+./watch.sh <example>
 ```
-
-and I have the example write to the `out.scad` file.
