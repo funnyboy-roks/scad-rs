@@ -122,6 +122,38 @@ macro_rules! impl_shape_2d {
     };
 }
 
+pub struct Rectangle {
+    size: Vector2,
+    center: bool,
+}
+impl_shape_2d!(impl for Rectangle);
+
+impl Rectangle {
+    pub fn with_size(size: impl Into<Vector2>) -> Self {
+        Self {
+            size: size.into(),
+            center: false,
+        }
+    }
+    pub fn center(self) -> Self {
+        Self {
+            center: true,
+            ..self
+        }
+    }
+}
+
+impl ToScad for Rectangle {
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        write!(writer, "square(")?;
+        self.size.to_scad(writer)?;
+        if self.center {
+            write!(writer, ", center = true")?;
+        }
+        write!(writer, ");")
+    }
+}
+
 pub struct Circle {
     radius: ScadValue,
 }

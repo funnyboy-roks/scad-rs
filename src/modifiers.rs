@@ -43,4 +43,4 @@ macro_rules! impl_modifier {
 impl_modifier!(Disabled, "*");
 impl_modifier!(ShowOnly, "!");
 impl_modifier!(Highlight, "#");
-impl_modifier!(Transparent, "#");
+impl_modifier!(Transparent, "%");

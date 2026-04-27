@@ -248,6 +248,14 @@ macro_rules! impl_bin_op {
                 }
             }
         }
+
+        impl $name<Variable> for $nums {
+            type Output = ScadValue;
+
+            fn $func(self, rhs: Variable) -> Self::Output {
+                ScadValue::from(self).op(stringify!($op), rhs.into())
+            }
+        }
         )+
 
         impl<T> $name<T> for Variable where T: Into<ScadValue> {
@@ -255,6 +263,14 @@ macro_rules! impl_bin_op {
 
             fn $func(self, rhs: T) -> Self::Output {
                 ScadValue::Variable(self).op(stringify!($op), rhs.into())
+            }
+        }
+
+        impl $name<Variable> for ScadValue {
+            type Output = ScadValue;
+
+            fn $func(self, rhs: Variable) -> Self::Output {
+                self.op(stringify!($op), ScadValue::Variable(rhs))
             }
         }
     };

@@ -76,6 +76,13 @@ where
     }
 }
 
+#[macro_export]
+macro_rules! raw {
+    {$($tt: tt)*} => {
+        $crate::Raw::new(stringify!($($tt)*))
+    };
+}
+
 pub struct Raw<'a>(&'a str);
 
 impl<'a> Raw<'a> {

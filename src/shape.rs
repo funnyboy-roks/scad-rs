@@ -113,15 +113,15 @@ where
 impl_shape_2d!(impl[T: Shape2d] for Shape<_2D, T>);
 impl_shape_3d!(impl[T: Shape3d] for Shape<_3D, T>);
 
-pub struct Raw<'a, D> {
+pub struct RawShape<'a, D> {
     raw: Cow<'a, str>,
     _d: PhantomData<D>,
 }
 
-impl_shape_3d!(impl for Raw<'_, _3D>);
-impl_shape_2d!(impl for Raw<'_, _2D>);
+impl_shape_3d!(impl for RawShape<'_, _3D>);
+impl_shape_2d!(impl for RawShape<'_, _2D>);
 
-impl<'a> Raw<'a, _2D> {
+impl<'a> RawShape<'a, _2D> {
     pub fn new_2d(raw: Cow<'a, str>) -> Self {
         Self {
             raw,
@@ -130,7 +130,7 @@ impl<'a> Raw<'a, _2D> {
     }
 }
 
-impl<'a> Raw<'a, _3D> {
+impl<'a> RawShape<'a, _3D> {
     pub fn new_3d(raw: Cow<'a, str>) -> Self {
         Self {
             raw,
@@ -139,7 +139,7 @@ impl<'a> Raw<'a, _3D> {
     }
 }
 
-impl<'a, D: Dimension> ToScad for Raw<'a, D> {
+impl<'a, D: Dimension> ToScad for RawShape<'a, D> {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
         writer.write_all(self.raw.as_bytes())
     }
