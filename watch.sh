@@ -7,7 +7,7 @@ if [ -z $1 ]; then
     exit 1
 fi
 
-file=$(mktemp scad-rs.XXXXXXXXXX.scad)
+file=$(mktemp /tmp/scad-rs.XXXXXXXXXX.scad)
 cargo r --example "$1" > "$file" 2>/dev/null
 openscad --viewall $file &
 os_pid=$?
