@@ -5,6 +5,15 @@ use std::{
 
 use crate::math::Variable;
 
+pub mod prelude {
+    pub use crate::boolean::{DynDifference, DynIntersection, DynShape, DynUnion};
+    pub use crate::math::{Vector2, Vector3};
+    pub use crate::shape::{Hull, Shape};
+    pub use crate::shape2d::*;
+    pub use crate::shape3d::*;
+    pub use crate::{Scad, ToScad, hull, impl_shape_2d, impl_shape_3d, var};
+}
+
 pub mod boolean;
 pub mod dim;
 pub mod math;

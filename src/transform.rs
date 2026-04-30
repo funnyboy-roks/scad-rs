@@ -12,7 +12,7 @@ use crate::{
     shape3d::Shape3d,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Scaled<D, T> {
     inner: T,
     scale: f64,
@@ -42,7 +42,7 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Translated<D: Dimension, T> {
     inner: T,
     translation: D::Vector,
@@ -69,7 +69,7 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Rotated<D: Dimension, T> {
     inner: T,
     rotation: D::Rotation,

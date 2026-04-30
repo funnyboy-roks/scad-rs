@@ -1,8 +1,11 @@
+#![allow(clippy::arc_with_non_send_sync)]
+
 use std::{
     fmt::Debug,
     io::{self, Write},
     marker::PhantomData,
     ops::{AddAssign, BitAndAssign, SubAssign},
+    sync::Arc,
 };
 
 use crate::{
@@ -17,7 +20,7 @@ use crate::{
 /// Implement the struct for a boolean operation
 macro_rules! impl_boolean {
     ($name: ident, $fn: literal) => {
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy, Eq, PartialEq)]
         pub struct $name<D, T, U> {
             left: T,
             right: U,
@@ -56,8 +59,9 @@ macro_rules! impl_boolean {
 
 macro_rules! impl_dyn_boolean {
     ($name: ident, $fn: literal, $op: ident, $op_fn: ident) => {
+        #[derive(Clone)]
         pub struct $name<D> {
-            items: Vec<Box<dyn ToScad>>,
+            items: Vec<Arc<dyn ToScad>>,
             _d: PhantomData<D>,
         }
 
@@ -104,14 +108,14 @@ macro_rules! impl_dyn_boolean {
                 Shape<D, R>: Valid,
             {
                 // SAFETY: Type is enforced by the signature
-                unsafe { Self::pair_raw(Box::new(lhs), Box::new(rhs)) }
+                unsafe { Self::pair_raw(Arc::new(lhs), Arc::new(rhs)) }
             }
 
             /// # SAFETY
             ///
             /// The caller must ensure that lhs and rhs are both valid shaped for the dimension.
             #[doc(hidden)]
-            pub unsafe fn pair_raw(lhs: Box<dyn ToScad>, rhs: Box<dyn ToScad>) -> Self
+            pub unsafe fn pair_raw(lhs: Arc<dyn ToScad>, rhs: Arc<dyn ToScad>) -> Self
             {
                 Self {
                     items: vec![lhs, rhs],
@@ -124,7 +128,7 @@ macro_rules! impl_dyn_boolean {
                 S: ToScad + 'static,
                 Shape<D, S>: Valid,
             {
-                self.items.push(Box::new(s));
+                self.items.push(Arc::new(s));
             }
         }
 
@@ -219,8 +223,9 @@ macro_rules! intersection {
 /// shape &= Cube::with_size([12, 5, 12]);
 /// # shape.to_scad(&mut std::io::empty()).unwrap();
 /// ```
+#[derive(Clone)]
 pub struct DynShape<D> {
-    inner: Option<Box<dyn ToScad>>,
+    inner: Option<Arc<dyn ToScad>>,
     _d: PhantomData<D>,
 }
 impl_shape_2d!(impl for DynShape<_2D>);
@@ -261,12 +266,12 @@ where
 {
     fn add_assign(&mut self, rhs: T) {
         self.inner = match self.inner.take() {
-            None => Some(Box::new(rhs)),
+            None => Some(Arc::new(rhs)),
             Some(inner) => {
                 // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
                 // using these methods
-                let new = unsafe { DynUnion::<_3D>::pair_raw(inner, Box::new(rhs)) };
-                Some(Box::new(new))
+                let new = unsafe { DynUnion::<_3D>::pair_raw(inner, Arc::new(rhs)) };
+                Some(Arc::new(new))
             }
         }
     }
@@ -283,8 +288,8 @@ where
             Some(inner) => {
                 // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
                 // using these methods
-                let new = unsafe { DynDifference::<_3D>::pair_raw(inner, Box::new(rhs)) };
-                Some(Box::new(new))
+                let new = unsafe { DynDifference::<_3D>::pair_raw(inner, Arc::new(rhs)) };
+                Some(Arc::new(new))
             }
         }
     }
@@ -301,8 +306,8 @@ where
             Some(inner) => {
                 // SAFETY: rhs is required to be Shape3d by impl bound and self.inner is always constructed
                 // using these methods
-                let new = unsafe { DynIntersection::<_3D>::pair_raw(inner, Box::new(rhs)) };
-                Some(Box::new(new))
+                let new = unsafe { DynIntersection::<_3D>::pair_raw(inner, Arc::new(rhs)) };
+                Some(Arc::new(new))
             }
         }
     }

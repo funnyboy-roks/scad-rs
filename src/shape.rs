@@ -3,6 +3,7 @@ use std::{
     io::{self, Write},
     marker::PhantomData,
     ops::{Deref, DerefMut},
+    sync::Arc,
 };
 
 use crate::{
@@ -158,8 +159,9 @@ macro_rules! hull {
     }};
 }
 
+#[derive(Clone)]
 pub struct Hull<D> {
-    inner: Vec<Box<dyn ToScad>>,
+    inner: Vec<Arc<dyn ToScad>>,
     _d: PhantomData<D>,
 }
 
@@ -192,7 +194,7 @@ impl<D> Hull<D> {
         S: ToScad + 'static,
         Shape<D, S>: Valid,
     {
-        self.inner.push(Box::new(s))
+        self.inner.push(Arc::new(s))
     }
 }
 
