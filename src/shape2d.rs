@@ -12,7 +12,7 @@ use crate::{
     math::{ScadValue, Vector2},
     modifiers::{Disabled, Highlight, ShowOnly, Transparent},
     shape::ClosureShape,
-    shape3d::LinearExtrude,
+    shape3d::{LinearExtrude, LinearExtrudeConfig, RotateExtrude, RotateExtrudeConfig},
     transform::{Rotated, Scaled, Translated},
 };
 
@@ -57,8 +57,16 @@ pub trait Shape2d: ToScad + Sized {
         Intersection::new(self, other)
     }
 
-    fn linear_extrude(self, height: impl Into<ScadValue>) -> LinearExtrude<Self> {
-        LinearExtrude::new(self, height.into())
+    fn linear_extrude(self, config: impl Into<LinearExtrudeConfig>) -> LinearExtrude<Self> {
+        LinearExtrude::new(self, config.into())
+    }
+
+    fn rotate_extrude(self) -> RotateExtrude<Self> {
+        RotateExtrude::new(self, Default::default())
+    }
+
+    fn rotate_extrude_with(self, config: impl Into<RotateExtrudeConfig>) -> RotateExtrude<Self> {
+        RotateExtrude::new(self, config.into())
     }
 
     fn number_of_segments(self, n: u32) -> impl Shape2d {

@@ -13,19 +13,19 @@ use crate::{
 };
 
 #[derive(Copy, Clone, Debug)]
-pub struct Scaled<D, T> {
+pub struct Scaled<D: Dimension, T> {
     inner: T,
-    scale: f64,
+    scale: D::Vector,
     _d: PhantomData<D>,
 }
 impl_shape_2d!(impl[T: Shape2d] for Scaled<_2D, T>);
 impl_shape_3d!(impl[T: Shape3d] for Scaled<_3D, T>);
 
-impl<D, T> Scaled<D, T> {
-    pub(crate) fn new(inner: T, scale: f64) -> Self {
+impl<D: Dimension, T> Scaled<D, T> {
+    pub(crate) fn new(inner: T, scale: impl Into<D::Vector>) -> Self {
         Self {
             inner,
-            scale,
+            scale: scale.into(),
             _d: PhantomData,
         }
     }
@@ -37,7 +37,9 @@ where
     Shape<D, T>: Valid,
 {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        write!(writer, "scale({})", self.scale)?;
+        write!(writer, "scale(")?;
+        self.scale.to_scad(writer)?;
+        write!(writer, ")")?;
         self.inner.to_scad(writer)
     }
 }

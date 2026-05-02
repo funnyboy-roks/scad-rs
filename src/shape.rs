@@ -150,11 +150,13 @@ impl<'a, D: Dimension> ToScad for RawShape<'a, D> {
 macro_rules! hull {
     [$($e: expr),+$(,)?] => {{
         let mut h = $crate::shape::Hull::with_capacity(
-            const {
-                [$(stringify!($e)),*].len()
-            }
+            LEN
         );
         $(h.add($e);)*
+
+        // order is weird here, because rust-analyzer uses the first expansion for auto completion.
+        const LEN: usize = [$(stringify!($e)),*].len();
+
         h
     }};
 }

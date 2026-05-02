@@ -7,7 +7,7 @@ use crate::math::Variable;
 
 pub mod prelude {
     pub use crate::boolean::{DynDifference, DynIntersection, DynShape, DynUnion};
-    pub use crate::math::{Vector2, Vector3};
+    pub use crate::math::{ScadValue, Vector2, Vector3};
     pub use crate::shape::{Hull, Shape};
     pub use crate::shape2d::*;
     pub use crate::shape3d::*;

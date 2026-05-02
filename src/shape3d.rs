@@ -52,7 +52,7 @@ pub trait Shape3d: ToScad + Sized {
         Rotated::new(self, rotation.into())
     }
 
-    fn scale(self, scale: impl Into<f64>) -> Scaled<_3D, Self> {
+    fn scale(self, scale: impl Into<Vector3>) -> Scaled<_3D, Self> {
         Scaled::new(self, scale.into())
     }
 
@@ -273,16 +273,52 @@ impl ToScad for Sphere {
     }
 }
 
+#[derive(Debug, Clone, Copy, Builder)]
+#[builder(kind = "type-state")]
+pub struct LinearExtrudeConfig {
+    #[builder(into)]
+    height: ScadValue,
+    #[builder(default, adapter = || true)]
+    center: bool,
+    /// Degrees
+    #[builder(into)]
+    twist: Option<ScadValue>,
+    #[builder(into)]
+    scale: Option<ScadValue>,
+    /// Similar to special variable $fn without being passed down to the child 2D shape
+    #[builder(into)]
+    slices: Option<ScadValue>,
+    /// Similar to slices but adding points on the polygon's segments without changing the polygon's
+    /// shape
+    #[builder(into)]
+    segments: Option<ScadValue>,
+    /// If parts of the model appear to be transparent, it may be because the preview needs a hint
+    /// about the shape and you need to set the [convexity parameter]. 10 is a good value to try.
+    ///
+    /// [convexity parameter]: https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/FAQ#Why_are_some_parts_(e.g._holes)_of_the_model_not_rendered_correctly?
+    #[builder(into)]
+    convexity: Option<ScadValue>,
+}
+
+impl<T> From<T> for LinearExtrudeConfig
+where
+    T: Into<ScadValue>,
+{
+    fn from(value: T) -> Self {
+        Self::builder().height(value).build()
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct LinearExtrude<T> {
     inner: T,
-    height: ScadValue,
+    config: LinearExtrudeConfig,
 }
 impl_shape_3d!(impl[T: Shape2d] for LinearExtrude<T>);
 
 impl<T> LinearExtrude<T> {
-    pub(crate) fn new(inner: T, height: ScadValue) -> Self {
-        Self { inner, height }
+    pub(crate) fn new(inner: T, config: LinearExtrudeConfig) -> Self {
+        Self { inner, config }
     }
 }
 
@@ -291,8 +327,72 @@ where
     T: Shape2d,
 {
     fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
-        write!(writer, "linear_extrude(")?;
-        self.height.to_scad(writer)?;
+        write!(writer, "linear_extrude(height =")?;
+        self.config.height.to_scad(writer)?;
+        macro_rules! add_field {
+            ($name: ident) => {
+                if let Some($name) = &self.config.$name {
+                    write!(writer, ", {} =", stringify!($name))?;
+                    $name.to_scad(writer)?;
+                }
+            };
+        }
+        if self.config.center {
+            write!(writer, ", center = true")?;
+        }
+        add_field!(twist);
+        add_field!(scale);
+        add_field!(slices);
+        add_field!(segments);
+        add_field!(convexity);
+        write!(writer, "){{")?;
+        self.inner.to_scad(writer)?;
+        write!(writer, "}}")
+    }
+}
+
+#[derive(Debug, Clone, Copy, Builder, Default)]
+#[builder(kind = "type-state")]
+pub struct RotateExtrudeConfig {
+    /// Degrees
+    #[builder(into)]
+    angle: Option<ScadValue>,
+    #[builder(into)]
+    start: Option<ScadValue>,
+    #[builder(into)]
+    convexity: Option<ScadValue>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RotateExtrude<T> {
+    inner: T,
+    config: RotateExtrudeConfig,
+}
+impl_shape_3d!(impl[T: Shape2d] for RotateExtrude<T>);
+
+impl<T> RotateExtrude<T> {
+    pub(crate) fn new(inner: T, config: RotateExtrudeConfig) -> Self {
+        Self { inner, config }
+    }
+}
+
+impl<T> ToScad for RotateExtrude<T>
+where
+    T: Shape2d,
+{
+    fn to_scad(&self, writer: &mut dyn Write) -> io::Result<()> {
+        write!(writer, "rotate_extrude(")?;
+        macro_rules! add_field {
+            ($name: ident) => {
+                if let Some($name) = &self.config.$name {
+                    write!(writer, ", {} =", stringify!($name))?;
+                    $name.to_scad(writer)?;
+                }
+            };
+        }
+        add_field!(angle);
+        add_field!(start);
+        add_field!(convexity);
         write!(writer, "){{")?;
         self.inner.to_scad(writer)?;
         write!(writer, "}}")

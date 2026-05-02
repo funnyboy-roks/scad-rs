@@ -10,6 +10,7 @@ use std::marker::PhantomData;
 
 macro_rules! impl_modifier {
     ($name: ident, $symbol: literal) => {
+        #[derive(Debug, Clone, Copy)]
         pub struct $name<D, T> {
             t: T,
             _d: PhantomData<D>,
