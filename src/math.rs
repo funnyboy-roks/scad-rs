@@ -184,6 +184,10 @@ impl ToScad for Variable {
 pub enum ScadValue {
     Float(f64),
     Variable(Variable),
+    FuncCall {
+        name: &'static str,
+        value: &'static [ScadValue],
+    },
     Expression {
         arg0: Option<&'static ScadValue>,
         arg1: &'static ScadValue,
@@ -210,6 +214,60 @@ impl ScadValue {
 
     fn into_static(self) -> &'static Self {
         Box::leak(Box::new(self))
+    }
+}
+
+macro_rules! impl_fn {
+    ($($(#[doc = $doc: literal])* fn $name: ident(self$(, $args: ident)*$(,)?);)+) => {
+        $(
+        $(#[doc = $doc])*
+        pub fn $name(self$(, $args: impl Into<ScadValue>)*) -> Self {
+            impl_fn!(@impl fn $name(self$(, $args)*))
+        }
+        )+
+    };
+    (@impl fn $name: ident($self: ident)) => {
+        Self::FuncCall {
+            name: stringify!($name),
+            value: std::slice::from_ref($self.into_static()),
+        }
+    };
+    (@impl fn $name: ident($self: ident$(, $args: ident)*)) => {
+        Self::FuncCall {
+            name: stringify!($name),
+            value: {
+                Box::leak(vec![$self, $($args.into()),*].into_boxed_slice())
+            },
+        }
+    };
+}
+
+impl ScadValue {
+    impl_fn! {
+        /// Mathematical absolute value function. Returns the positive value of a signed decimal number.
+        fn abs(self);
+        /// Mathematical signum function. Returns a unit value that extracts the sign of a value see: [Signum function]
+        ///
+        /// [Signum function]: https://en.wikipedia.org/wiki/Sign_function
+        fn sign(self);
+        fn sin(self);
+        fn cos(self);
+        fn tan(self);
+        fn acos(self);
+        fn asin(self);
+        fn atan(self);
+        fn atan2(self);
+        fn floor(self);
+        fn round(self);
+        fn ceil(self);
+        fn ln(self);
+        /// Mathematical logarithm to the base 10
+        fn log(self);
+        fn pow(self, exp);
+        fn sqrt(self);
+        fn exp(self);
+        fn min(self, other);
+        fn max(self, other);
     }
 }
 
@@ -330,6 +388,16 @@ impl ToScad for ScadValue {
         match self {
             ScadValue::Float(f) => write!(writer, "{}", f),
             ScadValue::Variable(v) => v.to_scad(writer),
+            ScadValue::FuncCall { name, value } => {
+                write!(writer, "{}(", name)?;
+                for (i, v) in value.iter().enumerate() {
+                    if i > 0 {
+                        write!(writer, ", ")?;
+                    }
+                    v.to_scad(writer)?;
+                }
+                write!(writer, ")")
+            }
             ScadValue::Expression { arg0, arg1, op } => {
                 write!(writer, "(")?;
                 if let Some(arg0) = arg0 {
