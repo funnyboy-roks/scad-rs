@@ -129,7 +129,7 @@ macro_rules! impl_shape_3d {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Cube {
     size: Vector3,
     center: bool,

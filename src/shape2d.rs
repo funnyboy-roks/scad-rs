@@ -130,6 +130,7 @@ macro_rules! impl_shape_2d {
     };
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Rectangle {
     size: Vector2,
     center: bool,
@@ -162,6 +163,7 @@ impl ToScad for Rectangle {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Circle {
     radius: ScadValue,
 }
